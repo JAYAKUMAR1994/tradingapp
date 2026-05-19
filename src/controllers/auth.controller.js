@@ -1,30 +1,67 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-
-const demoUser = {
-  id: 'demo-user',
-  name: 'Demo Trader',
-  email: 'demo@tradesignal.local',
-  passwordHash: bcrypt.hashSync('password123', 10)
-};
+import { query } from '../db/index.js';
 
 export async function login(req, res) {
-  const { email, password } = req.body;
-  const valid = email === demoUser.email && (await bcrypt.compare(password, demoUser.passwordHash));
+  try {
+    const { email, password } = req.body;
 
-  if (!valid) {
-    return res.status(401).json({ message: 'Invalid credentials' });
+    const result = await query(
+      'SELECT * FROM users WHERE email = $1 LIMIT 1',
+      [email]
+    );
+
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(401).json({
+        message: 'Invalid credentials'
+      });
+    }
+
+    const valid = await bcrypt.compare(
+      password,
+      user.password_hash
+    );
+
+    if (!valid) {
+      return res.status(401).json({
+        message: 'Invalid credentials'
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        name: user.name
+      },
+      process.env.JWT_SECRET || 'dev-secret',
+      {
+        expiresIn: '7d'
+      }
+    );
+
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email
+      }
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: 'Server error'
+    });
   }
-
-  const token = jwt.sign(
-    { sub: demoUser.id, email: demoUser.email, name: demoUser.name },
-    process.env.JWT_SECRET || 'dev-secret',
-    { expiresIn: '7d' }
-  );
-
-  return res.json({ token, user: { id: demoUser.id, name: demoUser.name, email: demoUser.email } });
 }
 
 export function me(req, res) {
-  res.json({ user: req.user });
+  res.json({
+    user: req.user
+  });
 }
