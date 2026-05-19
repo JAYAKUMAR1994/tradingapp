@@ -4,8 +4,8 @@ import jwt from 'jsonwebtoken';
 const demoUser = {
   id: 'demo-user',
   name: 'Demo Trader',
-  email: 'demo@tradesignal.local',
-  passwordHash: bcrypt.hashSync('password123', 10)
+  email: 'admin@tradesignal.local',
+  passwordHash: bcrypt.hashSync('Admin@12345', 10)
 };
 
 export async function login(req, res) {
